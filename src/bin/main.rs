@@ -60,7 +60,7 @@ impl ApplicationHandler for App {
             format: wgpu::TextureFormat::Bgra8Unorm,
             width,
             height,
-            present_mode: wgpu::PresentMode::AutoNoVsync,
+            present_mode: wgpu::PresentMode::AutoVsync,
             desired_maximum_frame_latency: 2,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
             view_formats: vec![],

@@ -17,21 +17,25 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy)]
 pub enum Block {
     Air,
-    Solid,
+    Red,
+    Green,
+    Blue,
 }
 
 impl Block {
     pub fn soild_in_direction(&self, #[expect(unused)] direction: Direction) -> bool {
         match *self {
             Block::Air => false,
-            Block::Solid => true,
+            Block::Red | Block::Green | Block::Blue => true,
         }
     }
 
     pub fn color(&self) -> (f32, f32, f32) {
         match *self {
             Block::Air => (1.0, 1.0, 1.0),
-            Block::Solid => (1.0, 1.0, 1.0),
+            Block::Red => (1.0, 0.0, 0.0),
+            Block::Green => (0.0, 1.0, 0.0),
+            Block::Blue => (0.0, 0.0, 1.0),
         }
     }
 }
