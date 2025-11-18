@@ -1,9 +1,16 @@
+use std::collections::HashSet;
+
 use crate::gpu::StorageBuffer;
 use bytemuck::NoUninit;
+use winit::keyboard::KeyCode;
 
 #[derive(Debug, Clone, Copy, NoUninit)]
 #[repr(C)]
 struct GpuCamera {
+    x: f32,
+    y: f32,
+    z: f32,
+    near_plane: f32,
     aspect: f32,
 }
 
@@ -21,16 +28,20 @@ struct Face {
 }
 
 pub struct Game {
+    camera_x: f32,
+    camera_y: f32,
+    camera_z: f32,
+
+    faces: Vec<Face>,
+
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
 
     faces_buffer: StorageBuffer<Face>,
-    faces_bind_group_layout: wgpu::BindGroupLayout,
-    faces_bind_group: wgpu::BindGroup,
+    chunk_bind_group_layout: wgpu::BindGroupLayout,
+    chunk_bind_group: wgpu::BindGroup,
 
-    faces_render_pipeline: wgpu::RenderPipeline,
-
-    faces: Vec<Face>,
+    chunk_render_pipeline: wgpu::RenderPipeline,
 }
 
 impl Game {
@@ -65,9 +76,9 @@ impl Game {
         });
 
         let faces_buffer = StorageBuffer::new(device, queue, "Faces Buffer", &[]);
-        let faces_bind_group_layout =
+        let chunk_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Faces Bind Group Layout"),
+                label: Some("Chunk Bind Group Layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -79,26 +90,25 @@ impl Game {
                     count: None,
                 }],
             });
-        let faces_bind_group =
-            Self::faces_bind_group(device, &faces_bind_group_layout, faces_buffer.buffer());
+        let chunk_bind_group =
+            Self::chunk_bind_group(device, &chunk_bind_group_layout, faces_buffer.buffer());
 
-        let faces_shader = device.create_shader_module(wgpu::include_wgsl!(concat!(
+        let chunk_shader = device.create_shader_module(wgpu::include_wgsl!(concat!(
             env!("OUT_DIR"),
-            "/shaders/faces.wgsl"
+            "/shaders/chunk.wgsl"
         )));
-
-        let faces_render_pipeline_layout =
+        let chunk_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Faces Render Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout, &faces_bind_group_layout],
+                label: Some("Chunk Render Pipeline Layout"),
+                bind_group_layouts: &[&camera_bind_group_layout, &chunk_bind_group_layout],
                 push_constant_ranges: &[],
             });
-        let faces_render_pipeline =
+        let chunk_render_pipeline =
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Faces Render Pipeline"),
-                layout: Some(&faces_render_pipeline_layout),
+                label: Some("Chunk Render Pipeline"),
+                layout: Some(&chunk_render_pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: &faces_shader,
+                    module: &chunk_shader,
                     entry_point: Some("vertex"),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     buffers: &[],
@@ -119,7 +129,7 @@ impl Game {
                     alpha_to_coverage_enabled: false,
                 },
                 fragment: Some(wgpu::FragmentState {
-                    module: &faces_shader,
+                    module: &chunk_shader,
                     entry_point: Some("fragment"),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
@@ -133,14 +143,9 @@ impl Game {
             });
 
         Self {
-            camera_buffer,
-            camera_bind_group,
-
-            faces_buffer,
-            faces_bind_group_layout,
-            faces_bind_group,
-
-            faces_render_pipeline,
+            camera_x: -1.0,
+            camera_y: 0.0,
+            camera_z: 0.0,
 
             faces: vec![Face {
                 x: 0.0,
@@ -152,10 +157,40 @@ impl Game {
                 width: 1.0,
                 height: 1.0,
             }],
+
+            camera_buffer,
+            camera_bind_group,
+
+            faces_buffer,
+            chunk_bind_group_layout,
+            chunk_bind_group,
+
+            chunk_render_pipeline,
         }
     }
 
-    pub fn update(&mut self, #[expect(unused)] ts: f32) {}
+    pub fn update(&mut self, keys: &HashSet<KeyCode>, ts: f32) {
+        let speed = 1.0;
+
+        if keys.contains(&KeyCode::KeyW) {
+            self.camera_x += speed * ts;
+        }
+        if keys.contains(&KeyCode::KeyS) {
+            self.camera_x -= speed * ts;
+        }
+        if keys.contains(&KeyCode::KeyA) {
+            self.camera_z -= speed * ts;
+        }
+        if keys.contains(&KeyCode::KeyD) {
+            self.camera_z += speed * ts;
+        }
+        if keys.contains(&KeyCode::KeyQ) {
+            self.camera_y -= speed * ts;
+        }
+        if keys.contains(&KeyCode::KeyE) {
+            self.camera_y += speed * ts;
+        }
+    }
 
     pub fn render<'a>(
         &'a mut self,
@@ -170,33 +205,37 @@ impl Game {
             &self.camera_buffer,
             0,
             bytemuck::bytes_of(&GpuCamera {
+                x: self.camera_x,
+                y: self.camera_y,
+                z: self.camera_z,
+                near_plane: 0.1,
                 aspect: width as f32 / height as f32,
             }),
         );
 
         if self.faces_buffer.write(device, queue, &self.faces) {
-            self.faces_bind_group = Self::faces_bind_group(
+            self.chunk_bind_group = Self::chunk_bind_group(
                 device,
-                &self.faces_bind_group_layout,
+                &self.chunk_bind_group_layout,
                 self.faces_buffer.buffer(),
             );
         }
 
         move |render_pass| {
-            render_pass.set_pipeline(&self.faces_render_pipeline);
+            render_pass.set_pipeline(&self.chunk_render_pipeline);
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.faces_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.chunk_bind_group, &[]);
             render_pass.draw(0..4, 0..1);
         }
     }
 
-    fn faces_bind_group(
+    fn chunk_bind_group(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
         faces_buffer: &wgpu::Buffer,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Faces Bind Group"),
+            label: Some("Chunk Bind Group"),
             layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,

@@ -1,5 +1,6 @@
 use blocks::game::Game;
 use std::{
+    collections::HashSet,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -7,8 +8,9 @@ use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     error::EventLoopError,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop},
+    event::{ElementState, KeyEvent, WindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowAttributes, WindowId},
 };
 
@@ -22,6 +24,7 @@ struct App {
     last_time: Option<Instant>,
     dt: Duration,
     game: Game,
+    keys: HashSet<KeyCode>,
     instance: wgpu::Instance,
     #[expect(unused)]
     adapter: wgpu::Adapter,
@@ -92,6 +95,20 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
 
+            WindowEvent::KeyboardInput {
+                device_id: _,
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        ..
+                    },
+                is_synthetic: _,
+            } => match state {
+                ElementState::Pressed => _ = self.keys.insert(key),
+                ElementState::Released => _ = self.keys.remove(&key),
+            },
+
             _ => {}
         }
     }
@@ -107,7 +124,7 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, #[expect(unused)] event_loop: &ActiveEventLoop) {
-        self.game.update(self.dt.as_secs_f32());
+        self.game.update(&self.keys, self.dt.as_secs_f32());
         self.render();
     }
 
@@ -122,6 +139,7 @@ impl App {
             ref window,
             ref surface,
             ref mut surface_config,
+            ..
         }) = self.window_state
         else {
             return;
@@ -211,6 +229,7 @@ impl App {
 
 fn main() -> Result<(), EventLoopError> {
     let event_loop = EventLoop::new()?;
+    event_loop.set_control_flow(ControlFlow::Poll);
 
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
@@ -248,6 +267,7 @@ fn main() -> Result<(), EventLoopError> {
         last_time: None,
         dt: Duration::ZERO,
         game: Game::new(&device, &queue),
+        keys: HashSet::new(),
         instance,
         adapter,
         device,
