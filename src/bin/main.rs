@@ -1,9 +1,8 @@
+use blocks::game::Game;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-
-use blocks::game::Game;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
