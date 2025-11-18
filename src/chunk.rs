@@ -245,42 +245,42 @@ impl Chunk {
         for (direction, faces) in &self.faces {
             let direction = match direction {
                 Direction::PositiveX => {
-                    if camera_x > self.x - 0.5 {
+                    if camera_x > self.x - 1.0 {
                         0
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeX => {
-                    if camera_x < self.x + CHUNK_SIZE as f32 - 0.5 {
+                    if camera_x < self.x + CHUNK_SIZE as f32 - 1.0 {
                         1
                     } else {
                         continue;
                     }
                 }
                 Direction::PositiveY => {
-                    if camera_y > self.y - 0.5 {
+                    if camera_y > self.y - 1.0 {
                         2
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeY => {
-                    if camera_y < self.y + CHUNK_SIZE as f32 - 0.5 {
+                    if camera_y < self.y + CHUNK_SIZE as f32 - 1.0 {
                         3
                     } else {
                         continue;
                     }
                 }
                 Direction::PositiveZ => {
-                    if camera_z > self.z - 0.5 {
+                    if camera_z > self.z - 1.0 {
                         4
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeZ => {
-                    if camera_z < self.z + CHUNK_SIZE as f32 - 0.5 {
+                    if camera_z < self.z + CHUNK_SIZE as f32 - 1.0 {
                         5
                     } else {
                         continue;
