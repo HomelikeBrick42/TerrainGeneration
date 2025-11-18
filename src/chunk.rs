@@ -131,6 +131,16 @@ impl Chunk {
     }
 
     pub fn pre_render(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        queue.write_buffer(
+            &self.chunk_buffer,
+            0,
+            bytemuck::bytes_of(&GpuChunk {
+                x: self.x,
+                y: self.y,
+                z: self.z,
+            }),
+        );
+
         if self.should_rebuild_chunks {
             self.should_rebuild_chunks = false;
 

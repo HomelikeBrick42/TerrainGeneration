@@ -112,22 +112,40 @@ impl Game {
                 cache: None,
             });
 
-        let mut chunk = Chunk::new(device, queue, 0.0, 0.0, 0.0);
-        for z in 0..CHUNK_SIZE {
-            for y in 0..CHUNK_SIZE {
-                for x in 0..CHUNK_SIZE {
-                    if rand::random_bool(0.2) {
-                        *chunk.get_block_mut(x, y, z).unwrap() = Block::Solid;
+        let mut chunks = vec![];
+        for chunk_z in 0..5 {
+            for chunk_y in 0..5 {
+                for chunk_x in 0..5 {
+                    let mut chunk = Chunk::new(
+                        device,
+                        queue,
+                        (chunk_x * CHUNK_SIZE) as f32,
+                        (chunk_y * CHUNK_SIZE) as f32,
+                        (chunk_z * CHUNK_SIZE) as f32,
+                    );
+                    for block_z in 0..CHUNK_SIZE {
+                        for block_y in 0..CHUNK_SIZE {
+                            for block_x in 0..CHUNK_SIZE {
+                                let y = ((chunk_y * CHUNK_SIZE) + block_y) as f32;
+
+                                if y < rand::random_range(0.0..CHUNK_SIZE as f32 * 5.0) {
+                                    *chunk.get_block_mut(block_x, block_y, block_z).unwrap() =
+                                        Block::Solid;
+                                }
+                            }
+                        }
                     }
+                    chunks.push(chunk);
                 }
             }
         }
+
         Self {
             camera_x: -2.0,
             camera_y: 0.0,
             camera_z: 0.0,
 
-            chunks: vec![chunk],
+            chunks,
 
             camera_buffer,
             camera_bind_group,
@@ -137,7 +155,7 @@ impl Game {
     }
 
     pub fn update(&mut self, keys: &HashSet<KeyCode>, ts: f32) {
-        let speed = 8.0;
+        let speed = 32.0;
 
         if keys.contains(&KeyCode::KeyW) {
             self.camera_x += speed * ts;
