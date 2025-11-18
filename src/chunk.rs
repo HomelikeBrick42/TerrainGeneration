@@ -123,6 +123,7 @@ impl Chunk {
 
     pub fn get_block_mut(&mut self, x: usize, y: usize, z: usize) -> Option<&mut Block> {
         if x < CHUNK_SIZE && y < CHUNK_SIZE && z < CHUNK_SIZE {
+            self.should_rebuild_chunks = true;
             Some(&mut self.blocks[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE])
         } else {
             None
