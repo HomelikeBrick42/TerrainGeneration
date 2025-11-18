@@ -18,6 +18,7 @@ struct WindowState {
     window: Arc<Window>,
     surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
+    depth_texture_view: wgpu::TextureView,
 }
 
 struct App {
@@ -70,6 +71,7 @@ impl ApplicationHandler for App {
             window,
             surface,
             surface_config,
+            depth_texture_view: Self::depth_texture(&self.device, width, height),
         });
     }
 
@@ -134,11 +136,12 @@ impl ApplicationHandler for App {
 }
 
 impl App {
-    pub fn resize(&mut self) {
+    fn resize(&mut self) {
         let Some(WindowState {
             ref window,
             ref surface,
             ref mut surface_config,
+            ref mut depth_texture_view,
             ..
         }) = self.window_state
         else {
@@ -150,13 +153,34 @@ impl App {
             surface_config.width = width;
             surface_config.height = height;
             surface.configure(&self.device, surface_config);
+            *depth_texture_view = Self::depth_texture(&self.device, width, height);
         }
     }
 
-    pub fn render(&mut self) {
+    fn depth_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::TextureView {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("Depth Texture"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Depth32Float,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            })
+            .create_view(&Default::default())
+    }
+
+    fn render(&mut self) {
         let Some(WindowState {
             ref window,
             ref surface,
+            ref depth_texture_view,
             ..
         }) = self.window_state
         else {
@@ -211,7 +235,14 @@ impl App {
                                 store: wgpu::StoreOp::Store,
                             },
                         })],
-                        depth_stencil_attachment: None,
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: depth_texture_view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(0.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
                         timestamp_writes: None,
                         occlusion_query_set: None,
                     });

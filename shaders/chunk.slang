@@ -3,6 +3,13 @@ import include.camera;
 [vk::binding(0, 0)]
 ConstantBuffer<Camera> camera;
 
+struct Chunk
+{
+    float x;
+    float y;
+    float z;
+}
+
 struct Face
 {
     float x;
@@ -16,6 +23,9 @@ struct Face
 }
 
 [vk::binding(0, 1)]
+ConstantBuffer<Chunk> chunk;
+
+[vk::binding(1, 1)]
 StructuredBuffer<Face> faces;
 
 struct VertexOutput
@@ -33,6 +43,7 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
     out.instance_id = instance_id;
 
     let camera_position = float3(camera.x, camera.y, camera.z);
+    let chunk_position = float3(chunk.x, chunk.y, chunk.z);
 
     let face = faces[instance_id];
     let position = float3(face.x, face.y, face.z);
@@ -72,7 +83,7 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
         break;
     }
 
-    var point = (position - camera_position) + offset;
+    var point = ((chunk_position + position) - camera_position) + offset;
     point.z /= camera.aspect;
     out.clip_position = float4(point.zy, camera.near_plane, point.x);
 

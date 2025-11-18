@@ -38,7 +38,15 @@ impl Block {
 
 #[derive(Debug, Clone, Copy, NoUninit)]
 #[repr(C)]
-struct Face {
+struct GpuChunk {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+#[derive(Debug, Clone, Copy, NoUninit)]
+#[repr(C)]
+struct GpuFace {
     x: f32,
     y: f32,
     z: f32,
@@ -51,7 +59,7 @@ struct Face {
 
 struct Faces {
     count: u32,
-    buffer: StorageBuffer<Face>,
+    buffer: StorageBuffer<GpuFace>,
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
 }
@@ -62,11 +70,34 @@ pub struct Chunk {
     pub z: f32,
     should_rebuild_chunks: bool,
     blocks: Box<[Block; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]>,
+
+    chunk_buffer: wgpu::Buffer,
     faces: EnumMap<Direction, Faces>,
 }
 
 impl Chunk {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, x: f32, y: f32, z: f32) -> Self {
+        let chunk_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Chunk Buffer"),
+            size: size_of::<GpuChunk>().next_multiple_of(16) as _,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let faces = enum_map! {
+            _ => {
+                let buffer = StorageBuffer::new(device, queue, "Faces Buffer", &[]);
+                let bind_group_layout = chunk_bind_group_layout(device);
+                let bind_group = chunk_bind_group(device, &bind_group_layout, &chunk_buffer, buffer.buffer());
+                Faces {
+                    count: 0,
+                    buffer,
+                    bind_group_layout,
+                    bind_group,
+                }
+            },
+        };
+
         Self {
             x,
             y,
@@ -76,19 +107,9 @@ impl Chunk {
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap(),
-            faces: enum_map! {
-                _ => {
-                    let buffer = StorageBuffer::new(device, queue, "Faces Buffer", &[]);
-                    let bind_group_layout = chunk_bind_group_layout(device);
-                    let bind_group = chunk_bind_group(device, &bind_group_layout, buffer.buffer());
-                    Faces {
-                        count: 0,
-                        buffer,
-                        bind_group_layout,
-                        bind_group,
-                    }
-                },
-            },
+
+            chunk_buffer,
+            faces,
         }
     }
 
@@ -176,7 +197,7 @@ impl Chunk {
                                 _ => continue,
                             };
 
-                            face_buffer.push(Face {
+                            face_buffer.push(GpuFace {
                                 x: x as f32 + offset_x,
                                 y: y as f32 + offset_y,
                                 z: z as f32 + offset_z,
@@ -194,8 +215,12 @@ impl Chunk {
             for (direction, faces) in &mut self.faces {
                 let face_buffer = &face_buffers[direction];
                 if faces.buffer.write(device, queue, face_buffer) {
-                    faces.bind_group =
-                        chunk_bind_group(device, &faces.bind_group_layout, faces.buffer.buffer());
+                    faces.bind_group = chunk_bind_group(
+                        device,
+                        &faces.bind_group_layout,
+                        &self.chunk_buffer,
+                        faces.buffer.buffer(),
+                    );
                 }
                 faces.count = face_buffer
                     .len()
@@ -271,30 +296,49 @@ impl Chunk {
 pub(crate) fn chunk_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("Chunk Bind Group Layout"),
-        entries: &[wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: None,
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
             },
-            count: None,
-        }],
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
     })
 }
 
 fn chunk_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
+    chunk_buffer: &wgpu::Buffer,
     faces_buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Chunk Bind Group"),
         layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: faces_buffer.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: chunk_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: faces_buffer.as_entire_binding(),
+            },
+        ],
     })
 }
