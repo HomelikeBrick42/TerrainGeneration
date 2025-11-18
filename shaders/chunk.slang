@@ -23,6 +23,7 @@ struct VertexOutput
     float4 clip_position : SV_Position;
     uint instance_id;
     float2 uv;
+    float3 normal;
 }
 
 [shader("vertex")]
@@ -41,7 +42,37 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
     let y = float((vertex_index >> 1) & 1);
     out.uv = float2(x, y);
 
-    var point = (position - camera_position) + float3(0.0, (out.uv - 0.5) * size);
+    let offset_2d = (out.uv - 0.5) * size;
+    var offset : float3;
+    switch (vertex_index >> 3)
+    {
+    case 0:
+        offset = float3(0.0, offset_2d.x, offset_2d.y);
+        out.normal = float3(1.0, 0.0, 0.0);
+        break;
+    case 1:
+        offset = float3(0.0, offset_2d.x, offset_2d.y);
+        out.normal = float3(-1.0, 0.0, 0.0);
+        break;
+    case 2:
+        offset = float3(offset_2d.x, 0.0, offset_2d.y);
+        out.normal = float3(0.0, 1.0, 0.0);
+        break;
+    case 3:
+        offset = float3(offset_2d.x, 0.0, offset_2d.y);
+        out.normal = float3(0.0, -1.0, 0.0);
+        break;
+    case 4:
+        offset = float3(offset_2d.x, offset_2d.y, 0.0);
+        out.normal = float3(0.0, 0.0, 1.0);
+        break;
+    case 5:
+        offset = float3(offset_2d.x, offset_2d.y, 0.0);
+        out.normal = float3(0.0, 0.0, -1.0);
+        break;
+    }
+
+    var point = (position - camera_position) + offset;
     point.z /= camera.aspect;
     out.clip_position = float4(point.zy, camera.near_plane, point.x);
 
@@ -60,7 +91,11 @@ FragmentOutput fragment(VertexOutput in)
 
     let face = faces[in.instance_id];
     let color = float3(face.red, face.green, face.blue);
-    out.color = float4(color, 1.0);
+
+    let light_direction = normalize(float3(0.2, 0.8, 0.1));
+    let light = max(0.1, dot(in.normal, light_direction) * 0.5 + 0.5);
+
+    out.color = float4(color * light, 1.0);
 
     return out;
 }
