@@ -184,6 +184,18 @@ impl Chunks {
         old_chunk
     }
 
+    pub fn remove_chunk(&mut self, chunk_position: Vector3<i64>) -> Option<Chunk> {
+        let chunk = self.chunks.remove(&chunk_position)?;
+        self.changed_chunks.insert(chunk_position);
+        Some(chunk)
+    }
+
+    pub fn clear_chunks(&mut self) {
+        drop(core::mem::take(&mut self.chunks));
+        drop(core::mem::take(&mut self.render_chunks));
+        drop(core::mem::take(&mut self.changed_chunks));
+    }
+
     pub fn get_block(&self, position: Vector3<i64>) -> Option<&Block> {
         let chunk_position = Vector3 {
             x: position.x.div_euclid(CHUNK_SIZE as i64),
