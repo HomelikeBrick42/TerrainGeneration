@@ -242,6 +242,7 @@ impl Game {
         if keys.contains(&KeyCode::ArrowDown) {
             self.camera.xy_rotation -= rotation_speed * ts;
         }
+        self.camera.xy_rotation = self.camera.xy_rotation.clamp(TAU * -0.25, TAU * 0.25);
 
         if keys.contains(&KeyCode::KeyF) {
             self.fake_camera_position = Some(self.camera.position);
