@@ -1,6 +1,6 @@
 use crate::{
     camera::{Camera, GpuCamera, camera_bind_group_layout},
-    chunks::{Block, CHUNK_SIZE, Chunk, Chunks},
+    chunks::{Block, Chunks},
 };
 use math::{Rotor, Vector3};
 use rand::seq::IndexedRandom;
@@ -36,19 +36,19 @@ impl Game {
         });
 
         let mut chunks = Chunks::new(device, queue);
-        for x in -5..=5 {
-            for y in -5..=5 {
-                for z in -5..=5 {
-                    let chunk_position = Vector3 { x, y, z };
-                    chunks.insert_chunk(
-                        chunk_position,
-                        Chunk::with(|position| {
-                            let x = chunk_position.x * CHUNK_SIZE as i64 + position.x as i64;
-                            let y = chunk_position.y * CHUNK_SIZE as i64 + position.y as i64;
-                            let z = chunk_position.z * CHUNK_SIZE as i64 + position.z as i64;
-
-                            if (y as f32)
-                                < (x as f32 / 7.0).sin() * 10.0 + (z as f32 / 5.0).cos() * 10.0
+        for chunk_x in -5..=5 {
+            for chunk_y in -5..=5 {
+                for chunk_z in -5..=5 {
+                    chunks.insert_chunk_with(
+                        Vector3 {
+                            x: chunk_x,
+                            y: chunk_y,
+                            z: chunk_z,
+                        },
+                        |position| {
+                            if (position.y as f32)
+                                < (position.x as f32 / 7.0).sin() * 10.0
+                                    + (position.z as f32 / 5.0).cos() * 10.0
                             {
                                 *[Block::Red, Block::Green, Block::Blue]
                                     .choose(&mut rand::rng())
@@ -56,7 +56,7 @@ impl Game {
                             } else {
                                 Block::Air
                             }
-                        }),
+                        },
                     );
                 }
             }

@@ -184,6 +184,27 @@ impl Chunks {
         old_chunk
     }
 
+    pub fn insert_chunk_with(
+        &mut self,
+        chunk_position: Vector3<i64>,
+        mut f: impl FnMut(Vector3<i64>) -> Block,
+    ) -> Option<Chunk> {
+        let old_chunk = self.chunks.insert(
+            chunk_position,
+            Chunk::with(|block_position| {
+                let position = chunk_position * CHUNK_SIZE as i64
+                    + Vector3 {
+                        x: block_position.x as i64,
+                        y: block_position.y as i64,
+                        z: block_position.z as i64,
+                    };
+                f(position)
+            }),
+        );
+        self.changed_chunks.insert(chunk_position);
+        old_chunk
+    }
+
     pub fn remove_chunk(&mut self, chunk_position: Vector3<i64>) -> Option<Chunk> {
         let chunk = self.chunks.remove(&chunk_position)?;
         self.changed_chunks.insert(chunk_position);
