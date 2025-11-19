@@ -36,6 +36,7 @@ impl Camera {
 
 pub struct Game {
     camera: Camera,
+    fake_camera_position: Option<Vector3<f32>>,
 
     chunks: Vec<Chunk>,
 
@@ -100,7 +101,7 @@ impl Game {
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                     strip_index_format: None,
                     front_face: wgpu::FrontFace::Cw,
-                    cull_mode: None,
+                    cull_mode: Some(wgpu::Face::Back),
                     unclipped_depth: false,
                     polygon_mode: wgpu::PolygonMode::Fill,
                     conservative: false,
@@ -176,6 +177,7 @@ impl Game {
                 y: 0.0,
                 z: 0.0,
             }),
+            fake_camera_position: None,
 
             chunks,
 
@@ -240,6 +242,13 @@ impl Game {
         if keys.contains(&KeyCode::ArrowDown) {
             self.camera.xy_rotation -= rotation_speed * ts;
         }
+
+        if keys.contains(&KeyCode::KeyF) {
+            self.fake_camera_position = Some(self.camera.position);
+        }
+        if keys.contains(&KeyCode::KeyG) {
+            self.fake_camera_position = None;
+        }
     }
 
     pub fn render<'a>(
@@ -270,7 +279,7 @@ impl Game {
                 chunk.render(
                     &self.chunk_render_pipeline,
                     &self.camera_bind_group,
-                    self.camera.position,
+                    self.fake_camera_position.unwrap_or(self.camera.position),
                     render_pass,
                 );
             }

@@ -57,7 +57,7 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
     switch (vertex_index >> 3)
     {
     case 0:
-        offset = float3(0.0, offset_2d.x, offset_2d.y);
+        offset = float3(0.0, -offset_2d.x, offset_2d.y);
         out.normal = float3(1.0, 0.0, 0.0);
         break;
     case 1:
@@ -69,11 +69,11 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
         out.normal = float3(0.0, 1.0, 0.0);
         break;
     case 3:
-        offset = float3(offset_2d.x, 0.0, offset_2d.y);
+        offset = float3(-offset_2d.x, 0.0, offset_2d.y);
         out.normal = float3(0.0, -1.0, 0.0);
         break;
     case 4:
-        offset = float3(offset_2d.x, offset_2d.y, 0.0);
+        offset = float3(-offset_2d.x, offset_2d.y, 0.0);
         out.normal = float3(0.0, 0.0, 1.0);
         break;
     case 5:
