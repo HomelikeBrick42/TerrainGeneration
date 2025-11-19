@@ -257,6 +257,10 @@ impl Chunk {
         render_pass.set_pipeline(chunk_render_pipeline);
         render_pass.set_bind_group(0, camera_bind_group, &[]);
         for (direction, faces) in &self.faces {
+            if faces.count == 0 {
+                continue;
+            }
+
             let direction = match direction {
                 Direction::PositiveX => {
                     if camera_x > self.x - 1.0 {

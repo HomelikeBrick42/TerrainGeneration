@@ -1,6 +1,6 @@
 use crate::chunk::{Block, CHUNK_SIZE, Chunk, chunk_bind_group_layout};
 use bytemuck::NoUninit;
-use rand::{Rng as _, seq::IndexedRandom};
+use rand::seq::IndexedRandom;
 use std::collections::HashSet;
 use winit::keyboard::KeyCode;
 
@@ -129,9 +129,14 @@ impl Game {
                     for block_z in 0..CHUNK_SIZE {
                         for block_y in 0..CHUNK_SIZE {
                             for block_x in 0..CHUNK_SIZE {
+                                let x = ((chunk_x * CHUNK_SIZE) + block_x) as f32;
                                 let y = ((chunk_y * CHUNK_SIZE) + block_y) as f32;
+                                let z = ((chunk_z * CHUNK_SIZE) + block_z) as f32;
 
-                                if y < rng.random_range(0.0..CHUNK_SIZE as f32 * 5.0) {
+                                if y < ((x / 3.0).sin() * 0.5 + 0.5) * 20.0
+                                    + ((z / 7.0).sin() * 0.5 + 0.5) * 10.0
+                                    + 10.0
+                                {
                                     *chunk.get_block_mut(block_x, block_y, block_z).unwrap() =
                                         *[Block::Red, Block::Green, Block::Blue]
                                             .choose(&mut rng)
