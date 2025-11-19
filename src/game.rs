@@ -1,5 +1,6 @@
 use crate::chunk::{Block, CHUNK_SIZE, Chunk, chunk_bind_group_layout};
 use bytemuck::NoUninit;
+use math::Vector3;
 use rand::seq::IndexedRandom;
 use std::collections::HashSet;
 use winit::keyboard::KeyCode;
@@ -15,9 +16,7 @@ struct GpuCamera {
 }
 
 pub struct Game {
-    camera_x: f32,
-    camera_y: f32,
-    camera_z: f32,
+    camera_position: Vector3<f32>,
 
     chunks: Vec<Chunk>,
 
@@ -122,9 +121,11 @@ impl Game {
                     let mut chunk = Chunk::new(
                         device,
                         queue,
-                        (chunk_x * CHUNK_SIZE) as f32,
-                        (chunk_y * CHUNK_SIZE) as f32,
-                        (chunk_z * CHUNK_SIZE) as f32,
+                        Vector3 {
+                            x: (chunk_x * CHUNK_SIZE) as f32,
+                            y: (chunk_y * CHUNK_SIZE) as f32,
+                            z: (chunk_z * CHUNK_SIZE) as f32,
+                        },
                     );
                     for block_z in 0..CHUNK_SIZE {
                         for block_y in 0..CHUNK_SIZE {
@@ -151,9 +152,11 @@ impl Game {
         }
 
         Self {
-            camera_x: -2.0,
-            camera_y: 0.0,
-            camera_z: 0.0,
+            camera_position: Vector3 {
+                x: -2.0,
+                y: 0.0,
+                z: 0.0,
+            },
 
             chunks,
 
@@ -168,22 +171,22 @@ impl Game {
         let speed = 32.0;
 
         if keys.contains(&KeyCode::KeyW) {
-            self.camera_x += speed * ts;
+            self.camera_position.x += speed * ts;
         }
         if keys.contains(&KeyCode::KeyS) {
-            self.camera_x -= speed * ts;
+            self.camera_position.x -= speed * ts;
         }
         if keys.contains(&KeyCode::KeyA) {
-            self.camera_z -= speed * ts;
+            self.camera_position.z -= speed * ts;
         }
         if keys.contains(&KeyCode::KeyD) {
-            self.camera_z += speed * ts;
+            self.camera_position.z += speed * ts;
         }
         if keys.contains(&KeyCode::KeyQ) {
-            self.camera_y -= speed * ts;
+            self.camera_position.y -= speed * ts;
         }
         if keys.contains(&KeyCode::KeyE) {
-            self.camera_y += speed * ts;
+            self.camera_position.y += speed * ts;
         }
     }
 
@@ -200,9 +203,9 @@ impl Game {
             &self.camera_buffer,
             0,
             bytemuck::bytes_of(&GpuCamera {
-                x: self.camera_x,
-                y: self.camera_y,
-                z: self.camera_z,
+                x: self.camera_position.x,
+                y: self.camera_position.y,
+                z: self.camera_position.z,
                 near_plane: 0.1,
                 aspect: width as f32 / height as f32,
             }),
@@ -217,9 +220,7 @@ impl Game {
                 chunk.render(
                     &self.chunk_render_pipeline,
                     &self.camera_bind_group,
-                    self.camera_x,
-                    self.camera_y,
-                    self.camera_z,
+                    self.camera_position,
                     render_pass,
                 );
             }

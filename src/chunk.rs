@@ -1,6 +1,7 @@
 use crate::gpu::StorageBuffer;
 use bytemuck::NoUninit;
 use enum_map::{Enum, EnumMap, enum_map};
+use math::Vector3;
 
 pub const CHUNK_SIZE: usize = 16;
 
@@ -69,9 +70,7 @@ struct Faces {
 }
 
 pub struct Chunk {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub position: Vector3<f32>,
     should_rebuild_chunks: bool,
     blocks: Box<[Block; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]>,
 
@@ -80,7 +79,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, x: f32, y: f32, z: f32) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, position: Vector3<f32>) -> Self {
         let chunk_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Chunk Buffer"),
             size: size_of::<GpuChunk>().next_multiple_of(16) as _,
@@ -103,9 +102,7 @@ impl Chunk {
         };
 
         Self {
-            x,
-            y,
-            z,
+            position,
             should_rebuild_chunks: true,
             blocks: std::iter::repeat_n(Block::Air, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE)
                 .collect::<Vec<_>>()
@@ -139,9 +136,9 @@ impl Chunk {
             &self.chunk_buffer,
             0,
             bytemuck::bytes_of(&GpuChunk {
-                x: self.x,
-                y: self.y,
-                z: self.z,
+                x: self.position.x,
+                y: self.position.y,
+                z: self.position.z,
             }),
         );
 
@@ -249,9 +246,7 @@ impl Chunk {
         &self,
         chunk_render_pipeline: &wgpu::RenderPipeline,
         camera_bind_group: &wgpu::BindGroup,
-        camera_x: f32,
-        camera_y: f32,
-        camera_z: f32,
+        camera_position: Vector3<f32>,
         render_pass: &mut wgpu::RenderPass<'_>,
     ) {
         render_pass.set_pipeline(chunk_render_pipeline);
@@ -263,42 +258,42 @@ impl Chunk {
 
             let direction = match direction {
                 Direction::PositiveX => {
-                    if camera_x > self.x - 1.0 {
+                    if camera_position.x > self.position.x - 1.0 {
                         0
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeX => {
-                    if camera_x < self.x + CHUNK_SIZE as f32 - 1.0 {
+                    if camera_position.x < self.position.x + CHUNK_SIZE as f32 - 1.0 {
                         1
                     } else {
                         continue;
                     }
                 }
                 Direction::PositiveY => {
-                    if camera_y > self.y - 1.0 {
+                    if camera_position.y > self.position.y - 1.0 {
                         2
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeY => {
-                    if camera_y < self.y + CHUNK_SIZE as f32 - 1.0 {
+                    if camera_position.y < self.position.y + CHUNK_SIZE as f32 - 1.0 {
                         3
                     } else {
                         continue;
                     }
                 }
                 Direction::PositiveZ => {
-                    if camera_z > self.z - 1.0 {
+                    if camera_position.z > self.position.z - 1.0 {
                         4
                     } else {
                         continue;
                     }
                 }
                 Direction::NegativeZ => {
-                    if camera_z < self.z + CHUNK_SIZE as f32 - 1.0 {
+                    if camera_position.z < self.position.z + CHUNK_SIZE as f32 - 1.0 {
                         5
                     } else {
                         continue;
