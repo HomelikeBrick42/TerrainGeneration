@@ -1,8 +1,8 @@
+import transform;
+
 struct Camera
 {
-    float x;
-    float y;
-    float z;
+    Transform transform;
     float near_plane;
     float aspect;
 }

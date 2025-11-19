@@ -1,6 +1,5 @@
-use bytemuck::NoUninit;
-
 use crate::Vector3;
+use bytemuck::NoUninit;
 
 ga_generator::ga! {
     element_type = f32;

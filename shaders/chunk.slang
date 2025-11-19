@@ -42,7 +42,6 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
     var out : VertexOutput;
     out.instance_id = instance_id;
 
-    let camera_position = float3(camera.x, camera.y, camera.z);
     let chunk_position = float3(chunk.x, chunk.y, chunk.z);
 
     let face = faces[instance_id];
@@ -83,9 +82,9 @@ VertexOutput vertex(uint vertex_index: SV_VertexID, uint instance_id: SV_Instanc
         break;
     }
 
-    var point = ((chunk_position + position) - camera_position) + offset;
-    point.z /= camera.aspect;
-    out.clip_position = float4(point.zy, camera.near_plane, point.x);
+    var point = chunk_position + position + offset;
+    point = camera.transform.reverse().transform_point(point);
+    out.clip_position = float4(point.z / camera.aspect, point.y, camera.near_plane, point.x);
 
     return out;
 }

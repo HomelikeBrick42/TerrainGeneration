@@ -1,22 +1,41 @@
 use crate::chunk::{Block, CHUNK_SIZE, Chunk, chunk_bind_group_layout};
 use bytemuck::NoUninit;
-use math::Vector3;
+use math::{Rotor, Transform, Vector3};
 use rand::seq::IndexedRandom;
-use std::collections::HashSet;
+use std::{collections::HashSet, f32::consts::TAU};
 use winit::keyboard::KeyCode;
 
 #[derive(Debug, Clone, Copy, NoUninit)]
 #[repr(C)]
 struct GpuCamera {
-    x: f32,
-    y: f32,
-    z: f32,
+    transform: Transform,
     near_plane: f32,
     aspect: f32,
 }
 
+pub struct Camera {
+    position: Vector3<f32>,
+    base_rotation: Rotor,
+    xy_rotation: f32,
+}
+
+impl Camera {
+    pub fn new(position: Vector3<f32>) -> Self {
+        Self {
+            position,
+            base_rotation: Rotor::IDENTITY,
+            xy_rotation: 0.0,
+        }
+    }
+
+    pub fn transform(&self) -> Transform {
+        Transform::from_rotor(Rotor::rotation_xy(self.xy_rotation).then(self.base_rotation))
+            .then(Transform::translation(self.position))
+    }
+}
+
 pub struct Game {
-    camera_position: Vector3<f32>,
+    camera: Camera,
 
     chunks: Vec<Chunk>,
 
@@ -134,7 +153,7 @@ impl Game {
                                 let y = ((chunk_y * CHUNK_SIZE) + block_y) as f32;
                                 let z = ((chunk_z * CHUNK_SIZE) + block_z) as f32;
 
-                                if y < ((x / 3.0).sin() * 0.5 + 0.5) * 20.0
+                                if y < ((x / 5.0).sin() * 0.5 + 0.5) * 20.0
                                     + ((z / 7.0).sin() * 0.5 + 0.5) * 10.0
                                     + 10.0
                                 {
@@ -152,11 +171,11 @@ impl Game {
         }
 
         Self {
-            camera_position: Vector3 {
+            camera: Camera::new(Vector3 {
                 x: -2.0,
                 y: 0.0,
                 z: 0.0,
-            },
+            }),
 
             chunks,
 
@@ -170,23 +189,56 @@ impl Game {
     pub fn update(&mut self, keys: &HashSet<KeyCode>, ts: f32) {
         let speed = 32.0;
 
+        let forward = self.camera.base_rotation.rotate_vector(Vector3 {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let up = self.camera.base_rotation.rotate_vector(Vector3 {
+            x: 0.0,
+            y: 1.0,
+            z: 0.0,
+        });
+        let right = self.camera.base_rotation.rotate_vector(Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        });
+
         if keys.contains(&KeyCode::KeyW) {
-            self.camera_position.x += speed * ts;
+            self.camera.position += forward * speed * ts;
         }
         if keys.contains(&KeyCode::KeyS) {
-            self.camera_position.x -= speed * ts;
+            self.camera.position -= forward * speed * ts;
         }
         if keys.contains(&KeyCode::KeyA) {
-            self.camera_position.z -= speed * ts;
+            self.camera.position -= right * speed * ts;
         }
         if keys.contains(&KeyCode::KeyD) {
-            self.camera_position.z += speed * ts;
+            self.camera.position += right * speed * ts;
         }
         if keys.contains(&KeyCode::KeyQ) {
-            self.camera_position.y -= speed * ts;
+            self.camera.position -= up * speed * ts;
         }
         if keys.contains(&KeyCode::KeyE) {
-            self.camera_position.y += speed * ts;
+            self.camera.position += up * speed * ts;
+        }
+
+        let rotation_speed = TAU * 0.5;
+
+        if keys.contains(&KeyCode::ArrowLeft) {
+            self.camera.base_rotation =
+                Rotor::rotation_xz(-rotation_speed * ts).then(self.camera.base_rotation);
+        }
+        if keys.contains(&KeyCode::ArrowRight) {
+            self.camera.base_rotation =
+                Rotor::rotation_xz(rotation_speed * ts).then(self.camera.base_rotation);
+        }
+        if keys.contains(&KeyCode::ArrowUp) {
+            self.camera.xy_rotation += rotation_speed * ts;
+        }
+        if keys.contains(&KeyCode::ArrowDown) {
+            self.camera.xy_rotation -= rotation_speed * ts;
         }
     }
 
@@ -203,9 +255,7 @@ impl Game {
             &self.camera_buffer,
             0,
             bytemuck::bytes_of(&GpuCamera {
-                x: self.camera_position.x,
-                y: self.camera_position.y,
-                z: self.camera_position.z,
+                transform: self.camera.transform(),
                 near_plane: 0.1,
                 aspect: width as f32 / height as f32,
             }),
@@ -220,7 +270,7 @@ impl Game {
                 chunk.render(
                     &self.chunk_render_pipeline,
                     &self.camera_bind_group,
-                    self.camera_position,
+                    self.camera.position,
                     render_pass,
                 );
             }
