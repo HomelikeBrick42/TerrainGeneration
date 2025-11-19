@@ -59,13 +59,6 @@ impl Chunk {
                     let x = index % CHUNK_SIZE as usize;
                     let y = (index / CHUNK_SIZE as usize) % CHUNK_SIZE as usize;
                     let z = index / (CHUNK_SIZE as usize * CHUNK_SIZE as usize);
-                    assert!(x < CHUNK_SIZE as usize);
-                    assert!(y < CHUNK_SIZE as usize);
-                    assert!(z < CHUNK_SIZE as usize);
-                    let computed_index = x
-                        + y * CHUNK_SIZE as usize
-                        + z * (CHUNK_SIZE as usize * CHUNK_SIZE as usize);
-                    assert_eq!(computed_index, index);
                     f(Vector3 {
                         x: x as u64,
                         y: y as u64,
