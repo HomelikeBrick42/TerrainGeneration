@@ -239,7 +239,7 @@ impl Chunks {
             .collect::<FastHashSet<_>>()
         {
             if !self.chunks.contains_key(&position) {
-                self.render_chunks.remove(&position);
+                render_chunks.remove(&position);
                 continue;
             }
             let render_chunk = render_chunks
