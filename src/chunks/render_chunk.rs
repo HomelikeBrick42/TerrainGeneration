@@ -95,7 +95,7 @@ impl RenderChunk {
                             Direction::PositiveX
                                 if chunks
                                     .get_block(position + Vector3 { x: 1, y: 0, z: 0 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::NegativeX)
                                     }) =>
                             {
@@ -104,7 +104,7 @@ impl RenderChunk {
                             Direction::NegativeX
                                 if chunks
                                     .get_block(position - Vector3 { x: 1, y: 0, z: 0 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::PositiveX)
                                     }) =>
                             {
@@ -114,7 +114,7 @@ impl RenderChunk {
                             Direction::PositiveY
                                 if chunks
                                     .get_block(position + Vector3 { x: 0, y: 1, z: 0 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::NegativeY)
                                     }) =>
                             {
@@ -123,7 +123,7 @@ impl RenderChunk {
                             Direction::NegativeY
                                 if chunks
                                     .get_block(position - Vector3 { x: 0, y: 1, z: 0 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::PositiveY)
                                     }) =>
                             {
@@ -133,7 +133,7 @@ impl RenderChunk {
                             Direction::PositiveZ
                                 if chunks
                                     .get_block(position + Vector3 { x: 0, y: 0, z: 1 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::NegativeZ)
                                     }) =>
                             {
@@ -142,7 +142,7 @@ impl RenderChunk {
                             Direction::NegativeZ
                                 if chunks
                                     .get_block(position - Vector3 { x: 0, y: 0, z: 1 })
-                                    .is_none_or(|block| {
+                                    .is_some_and(|block| {
                                         !block.soild_in_direction(Direction::PositiveZ)
                                     }) =>
                             {
@@ -258,6 +258,10 @@ impl RenderChunk {
             render_pass.set_bind_group(1, &faces.bind_group, &[]);
             render_pass.draw((direction << 3)..(direction << 3) | 4, 0..faces.count);
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.faces.iter().all(|(_, face)| face.count == 0)
     }
 }
 

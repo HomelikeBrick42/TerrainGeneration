@@ -279,6 +279,9 @@ impl Chunks {
                 .entry(position)
                 .or_insert_with(|| RenderChunk::new(device, queue));
             render_chunk.rebuild(device, queue, position * CHUNK_SIZE as i64, self);
+            if render_chunk.is_empty() {
+                render_chunks.remove(&position);
+            }
         }
         self.render_chunks = render_chunks;
     }

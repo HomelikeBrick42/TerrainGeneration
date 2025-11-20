@@ -36,9 +36,9 @@ impl Game {
         });
 
         let mut chunks = Chunks::new(device, queue);
-        for chunk_x in -5..=5 {
+        for chunk_x in -10..=10 {
             for chunk_y in -5..=5 {
-                for chunk_z in -5..=5 {
+                for chunk_z in -10..=10 {
                     chunks.insert_chunk_with(
                         Vector3 {
                             x: chunk_x,
