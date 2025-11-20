@@ -5,6 +5,7 @@ use crate::{
 };
 use enum_map::Enum;
 use math::Vector3;
+use std::sync::mpsc::{Receiver, Sender};
 use wgpu::naga::{FastHashMap, FastHashSet};
 
 mod render_chunk;
@@ -108,15 +109,25 @@ pub struct Chunks {
     render_chunks: FastHashMap<Vector3<i64>, RenderChunk>,
     changed_chunks: FastHashSet<Vector3<i64>>,
 
+    scheduled_chunk_loading: FastHashSet<Vector3<i64>>,
+    loaded_chunk_sender: Sender<(Vector3<i64>, Chunk)>,
+    loaded_chunk_receiver: Receiver<(Vector3<i64>, Chunk)>,
+
     chunk_render_pipeline: wgpu::RenderPipeline,
 }
 
 impl Chunks {
     pub fn new(device: &wgpu::Device, #[expect(unused)] queue: &wgpu::Queue) -> Self {
+        let (loaded_chunk_sender, loaded_chunk_receiver) = std::sync::mpsc::channel();
+
         Self {
             chunks: FastHashMap::default(),
             render_chunks: FastHashMap::default(),
             changed_chunks: FastHashSet::default(),
+
+            scheduled_chunk_loading: FastHashSet::default(),
+            loaded_chunk_sender,
+            loaded_chunk_receiver,
 
             chunk_render_pipeline: {
                 let chunk_shader = device.create_shader_module(wgpu::include_wgsl!(concat!(
@@ -187,19 +198,28 @@ impl Chunks {
         };
 
         let chunk_distance = 10;
+        let generated_chunks_limit = 30usize;
+        let deleted_chunks_limit = 30usize;
 
-        self.chunks.retain(|&chunk_position, _| {
-            let relative_chunk_position = center_chunk_position - chunk_position;
-            if relative_chunk_position.x.abs() > chunk_distance
-                || relative_chunk_position.y.abs() > chunk_distance
-                || relative_chunk_position.z.abs() > chunk_distance
-            {
-                self.changed_chunks.insert(chunk_position);
-                false
-            } else {
-                true
+        {
+            let mut to_delete = vec![];
+            for &chunk_position in self.chunks.keys() {
+                let relative_chunk_position = center_chunk_position - chunk_position;
+                if relative_chunk_position.x.abs() > chunk_distance + 2
+                    || relative_chunk_position.y.abs() > chunk_distance + 2
+                    || relative_chunk_position.z.abs() > chunk_distance + 2
+                {
+                    to_delete.push((chunk_position, relative_chunk_position));
+                }
             }
-        });
+            to_delete.sort_by_key(|&(_, relative_position)| {
+                relative_position.x + relative_position.y + relative_position.z
+            });
+            for (chunk_position, _) in to_delete.into_iter().take(deleted_chunks_limit) {
+                self.chunks.remove(&chunk_position);
+                self.render_chunks.remove(&chunk_position);
+            }
+        }
 
         for x in center_chunk_position.x - chunk_distance..=center_chunk_position.x + chunk_distance
         {
@@ -210,24 +230,42 @@ impl Chunks {
                     ..=center_chunk_position.z + chunk_distance
                 {
                     let chunk_position = Vector3 { x, y, z };
-                    if self.chunks.contains_key(&chunk_position) {
+                    if self.chunks.contains_key(&chunk_position)
+                        || self.scheduled_chunk_loading.contains(&chunk_position)
+                    {
                         continue;
                     }
 
-                    self.chunks.insert(
-                        chunk_position,
-                        Chunk::with(|block_position| {
+                    self.scheduled_chunk_loading.insert(chunk_position);
+                    let sender = self.loaded_chunk_sender.clone();
+                    rayon::spawn(move || {
+                        let chunk = Chunk::with(|block_position| {
                             let position = Vector3 {
                                 x: chunk_position.x * CHUNK_SIZE as i64 + block_position.x as i64,
                                 y: chunk_position.y * CHUNK_SIZE as i64 + block_position.y as i64,
                                 z: chunk_position.z * CHUNK_SIZE as i64 + block_position.z as i64,
                             };
                             terrain::sin_wave(position)
-                        }),
-                    );
-                    self.changed_chunks.insert(chunk_position);
+                        });
+                        _ = sender.send((chunk_position, chunk));
+                    });
                 }
             }
+        }
+
+        for (chunk_position, chunk) in self
+            .loaded_chunk_receiver
+            .try_iter()
+            .take(generated_chunks_limit)
+        {
+            if !self.scheduled_chunk_loading.remove(&chunk_position)
+                || self.chunks.contains_key(&chunk_position)
+            {
+                continue;
+            }
+
+            self.chunks.insert(chunk_position, chunk);
+            self.changed_chunks.insert(chunk_position);
         }
     }
 
