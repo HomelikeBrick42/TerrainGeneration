@@ -209,6 +209,7 @@ impl Chunks {
                     || relative_chunk_position.y.abs() > chunk_distance
                     || relative_chunk_position.z.abs() > chunk_distance
                 {
+                    self.scheduled_chunk_loading.remove(&chunk_position);
                     to_delete.push((chunk_position, relative_chunk_position));
                 }
             }
