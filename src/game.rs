@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::{
     camera::{Camera, GpuCamera, camera_bind_group_layout},
     chunks::Chunks,
@@ -50,6 +52,9 @@ impl Game {
     }
 
     pub fn update(&mut self, keys: &FastHashSet<KeyCode>, ts: f32) {
+        print!("\rFPS: {:.3}                            ", 1.0 / ts);
+        _ = std::io::stdout().flush();
+
         self.camera.update(keys, ts);
 
         if keys.contains(&KeyCode::KeyF) {
