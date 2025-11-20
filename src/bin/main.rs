@@ -1,9 +1,9 @@
 use blocks::game::Game;
 use std::{
-    collections::HashSet,
     sync::Arc,
     time::{Duration, Instant},
 };
+use wgpu::naga::FastHashSet;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -25,7 +25,7 @@ struct App {
     last_time: Option<Instant>,
     dt: Duration,
     game: Game,
-    keys: HashSet<KeyCode>,
+    keys: FastHashSet<KeyCode>,
     instance: wgpu::Instance,
     #[expect(unused)]
     adapter: wgpu::Adapter,
@@ -298,7 +298,7 @@ fn main() -> Result<(), EventLoopError> {
         last_time: None,
         dt: Duration::ZERO,
         game: Game::new(&device, &queue),
-        keys: HashSet::new(),
+        keys: FastHashSet::default(),
         instance,
         adapter,
         device,

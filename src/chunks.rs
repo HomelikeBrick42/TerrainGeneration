@@ -1,6 +1,7 @@
 use crate::{
     camera::camera_bind_group_layout,
     chunks::render_chunk::{RenderChunk, chunk_bind_group_layout},
+    terrain,
 };
 use enum_map::Enum;
 use math::Vector3;
@@ -178,43 +179,56 @@ impl Chunks {
         }
     }
 
-    pub fn insert_chunk(&mut self, chunk_position: Vector3<i64>, chunk: Chunk) -> Option<Chunk> {
-        let old_chunk = self.chunks.insert(chunk_position, chunk);
-        self.changed_chunks.insert(chunk_position);
-        old_chunk
-    }
+    pub fn load_unload_chunks(&mut self, camera_position: Vector3<f32>) {
+        let center_chunk_position = Vector3 {
+            x: (camera_position.x as i64).div_euclid(CHUNK_SIZE as i64),
+            y: (camera_position.y as i64).div_euclid(CHUNK_SIZE as i64),
+            z: (camera_position.z as i64).div_euclid(CHUNK_SIZE as i64),
+        };
 
-    pub fn insert_chunk_with(
-        &mut self,
-        chunk_position: Vector3<i64>,
-        mut f: impl FnMut(Vector3<i64>) -> Block,
-    ) -> Option<Chunk> {
-        let old_chunk = self.chunks.insert(
-            chunk_position,
-            Chunk::with(|block_position| {
-                let position = chunk_position * CHUNK_SIZE as i64
-                    + Vector3 {
-                        x: block_position.x as i64,
-                        y: block_position.y as i64,
-                        z: block_position.z as i64,
-                    };
-                f(position)
-            }),
-        );
-        self.changed_chunks.insert(chunk_position);
-        old_chunk
-    }
+        let chunk_distance = 10;
 
-    pub fn remove_chunk(&mut self, chunk_position: Vector3<i64>) -> Option<Chunk> {
-        let chunk = self.chunks.remove(&chunk_position)?;
-        self.changed_chunks.insert(chunk_position);
-        Some(chunk)
-    }
+        self.chunks.retain(|&chunk_position, _| {
+            let relative_chunk_position = center_chunk_position - chunk_position;
+            if relative_chunk_position.x.abs() > chunk_distance
+                || relative_chunk_position.y.abs() > chunk_distance
+                || relative_chunk_position.z.abs() > chunk_distance
+            {
+                self.changed_chunks.insert(chunk_position);
+                false
+            } else {
+                true
+            }
+        });
 
-    pub fn clear_chunks(&mut self) {
-        drop(core::mem::take(&mut self.chunks));
-        drop(core::mem::take(&mut self.render_chunks));
-        drop(core::mem::take(&mut self.changed_chunks));
+        for x in center_chunk_position.x - chunk_distance..=center_chunk_position.x + chunk_distance
+        {
+            for y in
+                center_chunk_position.y - chunk_distance..=center_chunk_position.y + chunk_distance
+            {
+                for z in center_chunk_position.z - chunk_distance
+                    ..=center_chunk_position.z + chunk_distance
+                {
+                    let chunk_position = Vector3 { x, y, z };
+                    if self.chunks.contains_key(&chunk_position) {
+                        continue;
+                    }
+
+                    self.chunks.insert(
+                        chunk_position,
+                        Chunk::with(|block_position| {
+                            let position = Vector3 {
+                                x: chunk_position.x * CHUNK_SIZE as i64 + block_position.x as i64,
+                                y: chunk_position.y * CHUNK_SIZE as i64 + block_position.y as i64,
+                                z: chunk_position.z * CHUNK_SIZE as i64 + block_position.z as i64,
+                            };
+                            terrain::sin_wave(position)
+                        }),
+                    );
+                    self.changed_chunks.insert(chunk_position);
+                }
+            }
+        }
     }
 
     pub fn get_block(&self, position: Vector3<i64>) -> Option<&Block> {

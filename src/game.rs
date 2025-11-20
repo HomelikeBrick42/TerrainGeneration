@@ -1,10 +1,9 @@
 use crate::{
     camera::{Camera, GpuCamera, camera_bind_group_layout},
-    chunks::{Block, Chunks},
+    chunks::Chunks,
 };
-use math::{Rotor, Vector3};
-use rand::seq::IndexedRandom;
-use std::{collections::HashSet, f32::consts::TAU};
+use math::Vector3;
+use wgpu::naga::FastHashSet;
 use winit::keyboard::KeyCode;
 
 pub struct Game {
@@ -35,37 +34,10 @@ impl Game {
             }],
         });
 
-        let mut chunks = Chunks::new(device, queue);
-        for chunk_x in -10..=10 {
-            for chunk_y in -5..=5 {
-                for chunk_z in -10..=10 {
-                    chunks.insert_chunk_with(
-                        Vector3 {
-                            x: chunk_x,
-                            y: chunk_y,
-                            z: chunk_z,
-                        },
-                        |position| {
-                            if (position.y as f32)
-                                < (position.x as f32 / 7.0).sin() * 10.0
-                                    + (position.z as f32 / 5.0).cos() * 10.0
-                            {
-                                *[Block::Red, Block::Green, Block::Blue]
-                                    .choose(&mut rand::rng())
-                                    .unwrap()
-                            } else {
-                                Block::Air
-                            }
-                        },
-                    );
-                }
-            }
-        }
-
         Self {
             camera: Camera::new(Vector3 {
-                x: -2.0,
-                y: 0.0,
+                x: 0.0,
+                y: 10.0,
                 z: 0.0,
             }),
             fake_camera_position: None,
@@ -73,65 +45,12 @@ impl Game {
             camera_buffer,
             camera_bind_group,
 
-            chunks,
+            chunks: Chunks::new(device, queue),
         }
     }
 
-    pub fn update(&mut self, keys: &HashSet<KeyCode>, ts: f32) {
-        let speed = 32.0;
-
-        let forward = self.camera.base_rotation.rotate_vector(Vector3 {
-            x: 1.0,
-            y: 0.0,
-            z: 0.0,
-        });
-        let up = self.camera.base_rotation.rotate_vector(Vector3 {
-            x: 0.0,
-            y: 1.0,
-            z: 0.0,
-        });
-        let right = self.camera.base_rotation.rotate_vector(Vector3 {
-            x: 0.0,
-            y: 0.0,
-            z: 1.0,
-        });
-
-        if keys.contains(&KeyCode::KeyW) {
-            self.camera.position += forward * speed * ts;
-        }
-        if keys.contains(&KeyCode::KeyS) {
-            self.camera.position -= forward * speed * ts;
-        }
-        if keys.contains(&KeyCode::KeyA) {
-            self.camera.position -= right * speed * ts;
-        }
-        if keys.contains(&KeyCode::KeyD) {
-            self.camera.position += right * speed * ts;
-        }
-        if keys.contains(&KeyCode::KeyQ) {
-            self.camera.position -= up * speed * ts;
-        }
-        if keys.contains(&KeyCode::KeyE) {
-            self.camera.position += up * speed * ts;
-        }
-
-        let rotation_speed = TAU * 0.5;
-
-        if keys.contains(&KeyCode::ArrowLeft) {
-            self.camera.base_rotation =
-                Rotor::rotation_xz(-rotation_speed * ts).then(self.camera.base_rotation);
-        }
-        if keys.contains(&KeyCode::ArrowRight) {
-            self.camera.base_rotation =
-                Rotor::rotation_xz(rotation_speed * ts).then(self.camera.base_rotation);
-        }
-        if keys.contains(&KeyCode::ArrowUp) {
-            self.camera.xy_rotation += rotation_speed * ts;
-        }
-        if keys.contains(&KeyCode::ArrowDown) {
-            self.camera.xy_rotation -= rotation_speed * ts;
-        }
-        self.camera.xy_rotation = self.camera.xy_rotation.clamp(TAU * -0.25, TAU * 0.25);
+    pub fn update(&mut self, keys: &FastHashSet<KeyCode>, ts: f32) {
+        self.camera.update(keys, ts);
 
         if keys.contains(&KeyCode::KeyF) {
             self.fake_camera_position = Some(self.camera.position);
@@ -139,6 +58,9 @@ impl Game {
         if keys.contains(&KeyCode::KeyG) {
             self.fake_camera_position = None;
         }
+
+        self.chunks
+            .load_unload_chunks(self.fake_camera_position.unwrap_or(self.camera.position));
     }
 
     pub fn render<'a>(
