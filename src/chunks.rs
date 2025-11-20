@@ -25,25 +25,25 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy)]
 pub enum Block {
     Air,
-    Red,
-    Green,
-    Blue,
+    Grass,
+    Dirt,
+    Stone,
 }
 
 impl Block {
     pub fn soild_in_direction(&self, #[expect(unused)] direction: Direction) -> bool {
         match *self {
             Block::Air => false,
-            Block::Red | Block::Green | Block::Blue => true,
+            Block::Grass | Block::Dirt | Block::Stone => true,
         }
     }
 
     pub fn color(&self) -> (f32, f32, f32) {
         match *self {
             Block::Air => (1.0, 1.0, 1.0),
-            Block::Red => (1.0, 0.0, 0.0),
-            Block::Green => (0.0, 1.0, 0.0),
-            Block::Blue => (0.0, 0.0, 1.0),
+            Block::Grass => (0.2, 0.6, 0.3),
+            Block::Dirt => (0.5, 0.4, 0.2),
+            Block::Stone => (0.5, 0.5, 0.5),
         }
     }
 }
@@ -253,7 +253,7 @@ impl Chunks {
                             y: chunk_position.y * CHUNK_SIZE as i64 + block_position.y as i64,
                             z: chunk_position.z * CHUNK_SIZE as i64 + block_position.z as i64,
                         };
-                        terrain::sin_wave(position)
+                        terrain::hills(position)
                     });
                     _ = sender.send((chunk_position, chunk));
                 });
