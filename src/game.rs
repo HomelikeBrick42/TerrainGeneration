@@ -39,7 +39,7 @@ impl Game {
         Self {
             camera: Camera::new(Vector3 {
                 x: 0.0,
-                y: 10.0,
+                y: 20.0,
                 z: 0.0,
             }),
             fake_camera_position: None,

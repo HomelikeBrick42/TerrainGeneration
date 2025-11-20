@@ -10,7 +10,7 @@ use wgpu::naga::{FastHashMap, FastHashSet};
 
 mod render_chunk;
 
-pub const CHUNK_SIZE: u64 = 16;
+pub const CHUNK_SIZE: u64 = 32;
 
 #[derive(Debug, Clone, Copy, Enum)]
 pub enum Direction {
@@ -197,34 +197,22 @@ impl Chunks {
             z: (camera_position.z as i64).div_euclid(CHUNK_SIZE as i64),
         };
 
-        let chunk_distance = 10;
-        let generated_chunks_limit = 20usize;
-        let deleted_chunks_limit = 20usize;
+        let chunk_distance = 5;
+        let generated_chunks_limit = 5usize;
 
-        {
-            let mut to_delete = vec![];
-            for &chunk_position in self.chunks.keys() {
-                let relative_chunk_position = chunk_position - center_chunk_position;
-                if relative_chunk_position.x.abs() > chunk_distance
-                    || relative_chunk_position.y.abs() > chunk_distance
-                    || relative_chunk_position.z.abs() > chunk_distance
-                {
-                    self.scheduled_chunk_loading.remove(&chunk_position);
-                    to_delete.push((chunk_position, relative_chunk_position));
-                }
-            }
-            to_delete.sort_unstable_by_key(|&(_, relative_position)| {
-                std::cmp::Reverse(
-                    relative_position.x.abs()
-                        + relative_position.y.abs()
-                        + relative_position.z.abs(),
-                )
-            });
-            for (chunk_position, _) in to_delete.into_iter().take(deleted_chunks_limit) {
-                self.chunks.remove(&chunk_position);
+        self.chunks.retain(|&chunk_position, _| {
+            let relative_chunk_position = chunk_position - center_chunk_position;
+            if relative_chunk_position.x.abs() > chunk_distance
+                || relative_chunk_position.y.abs() > chunk_distance
+                || relative_chunk_position.z.abs() > chunk_distance
+            {
+                self.scheduled_chunk_loading.remove(&chunk_position);
                 self.render_chunks.remove(&chunk_position);
+                false
+            } else {
+                true
             }
-        }
+        });
 
         {
             let mut to_load = vec![];
