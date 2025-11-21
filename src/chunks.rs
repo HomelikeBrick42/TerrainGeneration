@@ -209,8 +209,8 @@ impl Chunks {
                 let sender = self.loaded_chunk_sender.clone();
                 rayon::spawn(move || {
                     let chunk = Chunk::with(|block_position| {
-                        let position = chunk_position.map(|e| e * CHUNK_SIZE as i64)
-                            + block_position.map(|e| e as i64);
+                        let position =
+                            chunk_position * CHUNK_SIZE as i64 + block_position.map(|e| e as i64);
                         terrain::hills(position)
                     });
                     _ = sender.send((chunk_position, chunk));
@@ -295,7 +295,7 @@ impl Chunks {
                 queue,
                 camera_bind_group,
                 &self.chunk_render_pipeline,
-                position.map(|e| (e * CHUNK_SIZE as i64) as f32),
+                (position * CHUNK_SIZE as i64).map(|e| e as f32),
                 camera_position,
                 render_pass,
             );
