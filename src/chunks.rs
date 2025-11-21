@@ -1,9 +1,9 @@
 use crate::{
+    blocks::Block,
     camera::camera_bind_group_layout,
     chunks::render_chunk::{RenderChunk, chunk_bind_group_layout},
     terrain,
 };
-use enum_map::Enum;
 use math::Vector3;
 use std::sync::mpsc::{Receiver, Sender};
 use wgpu::naga::{FastHashMap, FastHashSet};
@@ -11,42 +11,6 @@ use wgpu::naga::{FastHashMap, FastHashSet};
 mod render_chunk;
 
 pub const CHUNK_SIZE: u64 = 32;
-
-#[derive(Debug, Clone, Copy, Enum)]
-pub enum Direction {
-    PositiveX,
-    NegativeX,
-    PositiveY,
-    NegativeY,
-    PositiveZ,
-    NegativeZ,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Block {
-    Air,
-    Grass,
-    Dirt,
-    Stone,
-}
-
-impl Block {
-    pub fn soild_in_direction(&self, #[expect(unused)] direction: Direction) -> bool {
-        match *self {
-            Block::Air => false,
-            Block::Grass | Block::Dirt | Block::Stone => true,
-        }
-    }
-
-    pub fn color(&self) -> (f32, f32, f32) {
-        match *self {
-            Block::Air => (1.0, 1.0, 1.0),
-            Block::Grass => (0.2, 0.6, 0.3),
-            Block::Dirt => (0.5, 0.4, 0.2),
-            Block::Stone => (0.5, 0.5, 0.5),
-        }
-    }
-}
 
 pub struct Chunk {
     blocks: Box<[Block; (CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE) as usize]>,

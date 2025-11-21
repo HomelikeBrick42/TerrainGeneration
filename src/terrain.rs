@@ -1,4 +1,4 @@
-use crate::chunks::Block;
+use crate::blocks::Block;
 use math::Vector3;
 use noise::{NoiseFn, Simplex};
 

@@ -1,5 +1,6 @@
 use crate::{
-    chunks::{CHUNK_SIZE, Chunks, Direction},
+    blocks::Direction,
+    chunks::{CHUNK_SIZE, Chunks},
     gpu::StorageBuffer,
 };
 use bytemuck::NoUninit;

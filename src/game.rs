@@ -1,8 +1,10 @@
 use std::io::Write;
 
 use crate::{
+    blocks::Block,
     camera::{Camera, GpuCamera, camera_bind_group_layout},
     chunks::Chunks,
+    ray::{Ray, raycast},
 };
 use math::Vector3;
 use wgpu::naga::FastHashSet;
@@ -62,6 +64,24 @@ impl Game {
         }
         if keys.contains(&KeyCode::KeyG) {
             self.fake_camera_position = None;
+        }
+
+        if keys.contains(&KeyCode::KeyR) {
+            let forward = self.camera.transform().rotate_vector(Vector3 {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            });
+            if let Some(hit) = raycast(
+                &self.chunks,
+                Ray {
+                    origin: self.camera.position,
+                    direction: forward,
+                },
+                20.0,
+            ) {
+                *self.chunks.get_block_mut(hit.block).unwrap() = Block::Air;
+            }
         }
 
         self.chunks
