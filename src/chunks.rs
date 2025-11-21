@@ -155,11 +155,8 @@ impl Chunks {
     }
 
     pub fn load_unload_chunks(&mut self, camera_position: Vector3<f32>) {
-        let center_chunk_position = Vector3 {
-            x: (camera_position.x as i64).div_euclid(CHUNK_SIZE as i64),
-            y: (camera_position.y as i64).div_euclid(CHUNK_SIZE as i64),
-            z: (camera_position.z as i64).div_euclid(CHUNK_SIZE as i64),
-        };
+        let center_chunk_position =
+            camera_position.map(|e| (e as i64).div_euclid(CHUNK_SIZE as i64));
 
         let chunk_distance = 5;
         let generated_chunks_limit = 5usize;
@@ -212,11 +209,8 @@ impl Chunks {
                 let sender = self.loaded_chunk_sender.clone();
                 rayon::spawn(move || {
                     let chunk = Chunk::with(|block_position| {
-                        let position = Vector3 {
-                            x: chunk_position.x * CHUNK_SIZE as i64 + block_position.x as i64,
-                            y: chunk_position.y * CHUNK_SIZE as i64 + block_position.y as i64,
-                            z: chunk_position.z * CHUNK_SIZE as i64 + block_position.z as i64,
-                        };
+                        let position = chunk_position.map(|e| e * CHUNK_SIZE as i64)
+                            + block_position.map(|e| e as i64);
                         terrain::hills(position)
                     });
                     _ = sender.send((chunk_position, chunk));
@@ -237,16 +231,8 @@ impl Chunks {
     }
 
     pub fn get_block(&self, position: Vector3<i64>) -> Option<&Block> {
-        let chunk_position = Vector3 {
-            x: position.x.div_euclid(CHUNK_SIZE as i64),
-            y: position.y.div_euclid(CHUNK_SIZE as i64),
-            z: position.z.div_euclid(CHUNK_SIZE as i64),
-        };
-        let block_position = Vector3 {
-            x: position.x.rem_euclid(CHUNK_SIZE as i64) as u64,
-            y: position.y.rem_euclid(CHUNK_SIZE as i64) as u64,
-            z: position.z.rem_euclid(CHUNK_SIZE as i64) as u64,
-        };
+        let chunk_position = position.map(|e| e.div_euclid(CHUNK_SIZE as i64));
+        let block_position = position.map(|e| e.rem_euclid(CHUNK_SIZE as i64) as u64);
         let block = self
             .chunks
             .get(&chunk_position)?
@@ -255,16 +241,8 @@ impl Chunks {
     }
 
     pub fn get_block_mut(&mut self, position: Vector3<i64>) -> Option<&mut Block> {
-        let chunk_position = Vector3 {
-            x: position.x.div_euclid(CHUNK_SIZE as i64),
-            y: position.y.div_euclid(CHUNK_SIZE as i64),
-            z: position.z.div_euclid(CHUNK_SIZE as i64),
-        };
-        let block_position = Vector3 {
-            x: position.x.rem_euclid(CHUNK_SIZE as i64) as u64,
-            y: position.y.rem_euclid(CHUNK_SIZE as i64) as u64,
-            z: position.z.rem_euclid(CHUNK_SIZE as i64) as u64,
-        };
+        let chunk_position = position.map(|e| e.div_euclid(CHUNK_SIZE as i64));
+        let block_position = position.map(|e| e.rem_euclid(CHUNK_SIZE as i64) as u64);
         let block = self
             .chunks
             .get_mut(&chunk_position)?
@@ -317,11 +295,7 @@ impl Chunks {
                 queue,
                 camera_bind_group,
                 &self.chunk_render_pipeline,
-                Vector3 {
-                    x: (position.x * CHUNK_SIZE as i64) as f32,
-                    y: (position.y * CHUNK_SIZE as i64) as f32,
-                    z: (position.z * CHUNK_SIZE as i64) as f32,
-                },
+                position.map(|e| (e * CHUNK_SIZE as i64) as f32),
                 camera_position,
                 render_pass,
             );

@@ -8,6 +8,15 @@ pub struct Vector2<T> {
     pub y: T,
 }
 
+impl<T> Vector2<T> {
+    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Vector2<U> {
+        Vector2 {
+            x: f(self.x),
+            y: f(self.y),
+        }
+    }
+}
+
 unsafe impl<T: NoUninit> NoUninit for Vector2<T> {}
 
 impl<T> Add<T> for Vector2<T>
@@ -208,6 +217,16 @@ pub struct Vector3<T> {
     pub x: T,
     pub y: T,
     pub z: T,
+}
+
+impl<T> Vector3<T> {
+    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Vector3<U> {
+        Vector3 {
+            x: f(self.x),
+            y: f(self.y),
+            z: f(self.z),
+        }
+    }
 }
 
 unsafe impl<T: NoUninit> NoUninit for Vector3<T> {}

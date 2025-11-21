@@ -15,27 +15,12 @@ pub struct Hit {
 }
 
 pub fn raycast(chunks: &Chunks, ray: Ray, max_distance: f32) -> Option<Hit> {
-    let step = Vector3 {
-        x: ray.direction.x.signum() as i64,
-        y: ray.direction.y.signum() as i64,
-        z: ray.direction.z.signum() as i64,
-    };
-    let delta = Vector3 {
-        x: (1.0 / ray.direction.x).abs(),
-        y: (1.0 / ray.direction.y).abs(),
-        z: (1.0 / ray.direction.z).abs(),
-    };
+    let step = ray.direction.map(|e| e.signum() as i64);
+    let delta = ray.direction.map(|e| (1.0 / e).abs());
 
-    let mut pos = Vector3 {
-        x: ray.origin.x.floor() as i64,
-        y: ray.origin.y.floor() as i64,
-        z: ray.origin.z.floor() as i64,
-    };
-    let mut t_max = Vector3 {
-        x: (((pos.x + step.x.max(0)) as f32 - ray.origin.x) / ray.direction.x).abs(),
-        y: (((pos.y + step.y.max(0)) as f32 - ray.origin.y) / ray.direction.y).abs(),
-        z: (((pos.z + step.z.max(0)) as f32 - ray.origin.z) / ray.direction.z).abs(),
-    };
+    let mut pos = ray.origin.map(|e| e.floor() as i64);
+    let mut t_max =
+        (((pos + step).map(|e| e as f32) - ray.origin) / ray.direction).map(|e| e.abs());
 
     loop {
         let distance = t_max.x.min(t_max.y).min(t_max.z);
